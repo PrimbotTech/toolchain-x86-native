@@ -1,0 +1,65 @@
+# ============================================================================
+# PrimeBot SDK - Docker 开发环境
+# 在 x86 电脑上运行 Docker 容器，编译和测试 SDK 示例代码
+# ============================================================================
+#
+# 构建镜像（在 sdk_t1 或 sdk_q1 目录下执行）:
+#   docker build -f Dockerfile.x86 -t primebot-sdk:dev .
+#
+# 运行容器:
+#   docker run -it --net=host primebot-sdk:dev
+#
+# 连接机器（机器ip与电脑ip处于同一网段）:
+#   export ROS_DOMAIN_ID=0
+#
+# 在容器内编译并运行示例:
+#   colcon build --packages-select aimdk_examples_cpp
+#   source install/setup.bash
+#   ros2 run aimdk_examples_cpp volume_control
+#
+# ============================================================================
+
+FROM ros:humble-ros-base
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# 安装编译和运行时依赖
+RUN apt-get update && apt-get install -y \
+    python3-pip \
+    git \
+    cmake \
+    libopencv-dev \
+    libssl-dev \
+    libyaml-cpp-dev \
+    && pip3 install colcon-common-extensions nanobind \
+    && rm -rf /var/lib/apt/lists/*
+
+# 拷贝 SDK 源码
+WORKDIR /ros2_ws/src
+COPY aimdk_msgs/        ./primebot_sdk/aimdk_msgs/
+COPY examples/          ./primebot_sdk/examples/
+COPY README.md          ./primebot_sdk/README.md
+COPY 接口说明.md         ./primebot_sdk/接口说明.md
+COPY PrimeBot_SDK快速入门与集成指南.md  ./primebot_sdk/PrimeBot_SDK快速入门与集成指南.md
+COPY 友好用户使用声明.md   ./primebot_sdk/友好用户使用声明.md
+
+# 编译 SDK（包含 C++ 示例包）
+WORKDIR /ros2_ws
+SHELL ["/bin/bash", "-c"]
+RUN . /opt/ros/humble/setup.bash \
+    && colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release \
+    && rm -rf build/ log/
+
+# 入口脚本
+RUN cat > /ros2_ws/entrypoint.sh << 'EOF'
+#!/bin/bash
+set -e
+source /opt/ros/humble/setup.bash
+source /ros2_ws/install/setup.bash
+exec "$@"
+EOF
+RUN chmod +x /ros2_ws/entrypoint.sh
+
+WORKDIR /ros2_ws
+ENTRYPOINT ["/ros2_ws/entrypoint.sh"]
+CMD ["/bin/bash"]
