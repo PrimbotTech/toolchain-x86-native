@@ -1,0 +1,28 @@
+FROM ros:humble-ros-base
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# 安装编译和运行时依赖
+RUN apt-get update && apt-get install -y \
+    net-tools \
+    openssh-client \
+    openssh-server \
+    file \
+    iputils-ping \
+    python3-pip \
+    git \
+    cmake \
+    libopencv-dev \
+    libssl-dev \
+    libyaml-cpp-dev \
+    ffmpeg \
+    pybind11-dev \
+    && pip3 install colcon-common-extensions nanobind numpy opencv-python -i https://pypi.tuna.tsinghua.edu.cn/simple \
+    && rm -rf /var/lib/apt/lists/*
+
+# 安装 ONNX Runtime（x64 预编译包）
+ADD common/onnxruntime-linux-x64-1.18.0.tgz /usr/local/onnxruntime/
+RUN mv /usr/local/onnxruntime/onnxruntime-linux-x64-1.18.0/* /usr/local/onnxruntime/ && \
+    rmdir /usr/local/onnxruntime/onnxruntime-linux-x64-1.18.0
+RUN echo '/usr/local/onnxruntime/lib' > /etc/ld.so.conf.d/onnxruntime.conf && \
+    ldconfig
